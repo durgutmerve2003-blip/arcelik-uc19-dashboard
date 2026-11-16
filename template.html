@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>UC19 · Parts prediction before the technician leaves</title>
+<style>
+.app {
+  color-scheme: light;
+  --page: #f9f9f7; --surface: #fcfcfb; --card: #ffffff;
+  --ink: #0b0b0b; --ink2: #52514e; --muted: #898781;
+  --grid: #e1e0d9; --axis: #c3c2b7; --border: rgba(11,11,11,0.10);
+  --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --s4: #eda100;
+  --crit: #d03b3b; --good: #006300; --warn-bg: #fdf1ef; --accent-bg: #eef4fc;
+}
+@media (prefers-color-scheme: dark) {
+  .app {
+    color-scheme: dark;
+    --page: #0d0d0d; --surface: #1a1a19; --card: #1a1a19;
+    --ink: #f0efec; --ink2: #c3c2b7; --muted: #898781;
+    --grid: #2c2c2a; --axis: #383835; --border: rgba(255,255,255,0.10);
+    --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500;
+    --crit: #e66767; --good: #0ca30c; --warn-bg: #2a1a19; --accent-bg: #16222f;
+  }
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+.app { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; background: var(--page); color: var(--ink); min-height: 100vh; font-size: 14px; line-height: 1.45; }
+.wrap { max-width: 1280px; margin: 0 auto; padding: 20px 20px 48px; }
+header.top h1 { font-size: 22px; margin: 0 0 2px; font-weight: 650; letter-spacing: -0.01em; }
+header.top p { margin: 0; color: var(--ink2); }
+.badge-dummy { display: inline-block; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 99px; background: var(--accent-bg); color: var(--s1); margin-left: 6px; vertical-align: 3px; }
+.filters { position: sticky; top: 0; z-index: 20; background: var(--page); padding: 12px 0; margin-top: 14px; border-bottom: 1px solid var(--border); display: flex; flex-wrap: wrap; gap: 10px; align-items: end; }
+.filters label { display: flex; flex-direction: column; font-size: 11px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; gap: 3px; }
+.filters select, .search { font: inherit; font-size: 13px; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--border); background: var(--card); color: var(--ink); min-width: 120px; }
+button { font: inherit; cursor: pointer; }
+.btn { font-size: 13px; padding: 6px 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--card); color: var(--ink); }
+.btn:hover { background: var(--accent-bg); }
+.tabs { display: flex; gap: 4px; margin: 16px 0 6px; flex-wrap: wrap; }
+.tab { padding: 8px 14px; border-radius: 8px; border: 1px solid transparent; background: none; color: var(--ink2); font-weight: 550; }
+.tab[aria-selected="true"] { background: var(--card); border-color: var(--border); color: var(--ink); box-shadow: 0 1px 2px rgba(0,0,0,.04); }
+.howto { font-size: 13px; color: var(--ink2); background: var(--accent-bg); border-radius: 8px; padding: 8px 12px; margin: 8px 0 14px; }
+.howto b { color: var(--ink); }
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; }
+.kpi { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; }
+.kpi .lbl { font-size: 12px; color: var(--ink2); font-weight: 600; }
+.kpi .val { font-size: 28px; font-weight: 650; margin: 2px 0; letter-spacing: -0.02em; }
+.kpi .sub { font-size: 12px; color: var(--ink2); }
+.kpi .calc { font-size: 11px; color: var(--muted); margin-top: 6px; border-top: 1px dashed var(--border); padding-top: 6px; }
+.kpi.flagged .val { color: var(--crit); }
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 12px; margin-top: 12px; }
+.grid3 { display: grid; grid-template-columns: 2fr 1fr; gap: 12px; margin-top: 12px; }
+@media (max-width: 900px) { .grid3 { grid-template-columns: 1fr; } .grid2 { grid-template-columns: 1fr; } }
+.card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; min-width: 0; }
+.card h3 { margin: 0; font-size: 15px; font-weight: 620; }
+.card .desc { margin: 2px 0 8px; font-size: 12px; color: var(--muted); }
+.chart { width: 100%; position: relative; }
+.chart svg { display: block; overflow: visible; }
+.chart text { font-size: 11px; fill: var(--muted); font-variant-numeric: tabular-nums; }
+.chart .lbl-ink { fill: var(--ink2); }
+.chart .lbl-strong { fill: var(--ink); font-weight: 600; }
+.legend { display: flex; flex-wrap: wrap; gap: 12px; font-size: 12px; color: var(--ink2); margin: 2px 0 6px; }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
+.tip { position: fixed; pointer-events: none; z-index: 100; background: var(--card); color: var(--ink); border: 1px solid var(--border); box-shadow: 0 4px 16px rgba(0,0,0,.12); border-radius: 8px; padding: 8px 10px; font-size: 12px; min-width: 140px; display: none; }
+.tip .t { font-weight: 650; margin-bottom: 4px; }
+.tip .r { display: flex; justify-content: space-between; gap: 12px; font-variant-numeric: tabular-nums; }
+.tip .r i { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 5px; }
+.flag { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 650; color: var(--crit); background: var(--warn-bg); border-radius: 99px; padding: 1px 8px; white-space: nowrap; }
+.kit { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 650; color: var(--good); background: rgba(12,163,12,.10); border-radius: 99px; padding: 1px 8px; white-space: nowrap; }
+.ok { font-size: 11px; color: var(--muted); }
+table.dt { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
+.dt th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); font-weight: 650; padding: 8px 8px; border-bottom: 1px solid var(--axis); cursor: pointer; white-space: nowrap; user-select: none; position: sticky; top: 0; background: var(--card); }
+.dt th.num, .dt td.num { text-align: right; }
+.dt th[aria-sort="ascending"]::after { content: " ▲"; } .dt th[aria-sort="descending"]::after { content: " ▼"; }
+.dt td { white-space: nowrap; padding: 7px 8px; border-bottom: 1px solid var(--grid); vertical-align: top; }
+.dt tbody tr { cursor: pointer; } .dt tbody tr:hover { background: var(--accent-bg); }
+.tablebar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; margin: 8px 0; }
+.tablebar .count { font-size: 12px; color: var(--muted); }
+.scrollx { overflow-x: auto; max-height: 560px; overflow-y: auto; }
+.pager { display: flex; gap: 6px; align-items: center; justify-content: flex-end; margin-top: 8px; font-size: 12px; color: var(--ink2); }
+.link { color: var(--s1); text-decoration: underline; text-underline-offset: 2px; cursor: pointer; background: none; border: 0; padding: 0; font: inherit; }
+.drawer-bg { position: fixed; inset: 0; background: rgba(0,0,0,.35); z-index: 60; display: none; }
+.drawer { position: fixed; top: 0; right: 0; bottom: 0; width: min(760px, 100vw); background: var(--page); z-index: 70; overflow-y: auto; box-shadow: -8px 0 32px rgba(0,0,0,.2); transform: translateX(100%); transition: transform .2s ease; padding: 18px 20px 40px; }
+.drawer.open { transform: none; } .drawer-bg.open { display: block; }
+.drawer h2 { margin: 0; font-size: 20px; }
+.drawer .close { position: absolute; top: 14px; right: 16px; }
+.dl { display: grid; grid-template-columns: 160px 1fr; gap: 6px 12px; font-size: 13px; }
+.dl dt { color: var(--muted); } .dl dd { margin: 0; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.chip { font-size: 12px; padding: 3px 9px; border-radius: 99px; background: var(--card); border: 1px solid var(--border); }
+.flaglist { display: grid; gap: 8px; }
+.flagrow { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 8px; background: var(--surface); border: 1px solid var(--border); }
+.flagrow .rule { font-size: 13px; } .flagrow .rule small { display: block; color: var(--muted); font-size: 11px; }
+.flagrow .n { font-size: 20px; font-weight: 650; color: var(--crit); min-width: 34px; text-align: right; }
+.flagrow .n.zero { color: var(--good); }
+.foot { margin-top: 24px; font-size: 12px; color: var(--muted); }
+.page { display: none; } .page.active { display: block; }
+.empty { color: var(--muted); font-size: 13px; padding: 20px 0; text-align: center; }
+</style>
+</head>
+<body>
+<div class="app">
+<div class="wrap">
+  <header class="top">
+    <h1>Parts prediction before the technician leaves <span class="badge-dummy">Dummy data</span></h1>
+    <p>Arçelik AI use case 19 · Which parts does each fault code usually need, and where do missing parts cause second visits? · Descriptive only, no models.</p>
+  </header>
+
+  <div class="filters" role="group" aria-label="Filters">
+    <label>From <select id="fFrom"></select></label>
+    <label>To <select id="fTo"></select></label>
+    <label>Region <select id="fRegion"></select></label>
+    <label>Brand <select id="fBrand"></select></label>
+    <label>Category <select id="fCat"></select></label>
+    <label>Warranty <select id="fWar"></select></label>
+    <button class="btn" id="reset">Reset filters</button>
+    <span id="filterCount" style="font-size:12px;color:var(--muted);align-self:center"></span>
+  </div>
+
+  <nav class="tabs" role="tablist">
+    <button class="tab" role="tab" data-tab="overview" aria-selected="true">1 · Overview</button>
+    <button class="tab" role="tab" data-tab="parts">2 · Fault code → parts</button>
+    <button class="tab" role="tab" data-tab="people">3 · Regions &amp; technicians</button>
+    <button class="tab" role="tab" data-tab="jobs">4 · Job list</button>
+  </nav>
+
+  <!-- PAGE 1 -->
+  <section class="page active" id="page-overview">
+    <div class="howto"><b>How to read this:</b> the cards say how often a job is closed on the first visit; the charts show when, why and for which fault codes it is not. Click any fault code to open its profile.</div>
+    <div class="kpis" id="kpis"></div>
+    <div class="grid2">
+      <div class="card" id="c-trend"><h3>First-time-fix rate by month</h3><p class="desc">Share of jobs closed on the first visit. Dashed line = 70% flag threshold.</p><div class="chart" id="ch-trend"></div></div>
+      <div class="card" id="c-svtrend"><h3>Second visits by month and reason</h3><p class="desc">Count of jobs that needed a second visit, split by why.</p><div class="legend" id="lg-svtrend"></div><div class="chart" id="ch-svtrend"></div></div>
+    </div>
+    <div class="grid3">
+      <div class="card" id="c-rank"><h3>Fault codes needing attention</h3><p class="desc">Ranked by first-time-fix rate, lowest first. ⚑ = under 70% with at least 30 jobs. Click a bar for the fault profile.</p><div class="chart" id="ch-rank"></div></div>
+      <div>
+        <div class="card" id="c-reasons"><h3>Why a second visit was needed</h3><p class="desc">Share of all second visits in the filter.</p><div class="chart" id="ch-reasons"></div></div>
+        <div class="card" id="c-flags" style="margin-top:12px"><h3>Rule-based flags</h3><p class="desc">Simple thresholds, recalculated for the current filters.</p><div class="flaglist" id="flaglist"></div></div>
+      </div>
+    </div>
+    <div class="grid2">
+      <div class="card" id="c-cat"><h3>First-time-fix rate by product category</h3><p class="desc">Breakdown of the headline rate. Click a bar to filter to that category.</p><div class="chart" id="ch-cat"></div></div>
+      <div class="card" id="c-missparts"><h3>Parts most often missing from the van</h3><p class="desc">Times a needed part was not on the van at the first visit (each one forced a second visit).</p><div class="chart" id="ch-missparts"></div></div>
+    </div>
+  </section>
+
+  <!-- PAGE 2 -->
+  <section class="page" id="page-parts">
+    <div class="howto"><b>How to read this:</b> pick a fault code to see which parts its jobs used and how often each was missing from the van; parts used in 30% or more of its jobs form the suggested pre-load kit. The table below lists every fault code × part pair.</div>
+    <div class="card">
+      <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:end;justify-content:space-between">
+        <label style="display:flex;flex-direction:column;font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.04em;gap:3px">Fault code
+          <select id="faultSel" class="search" style="min-width:320px"></select></label>
+        <button class="btn" id="openFault">Open full fault profile →</button>
+      </div>
+      <div class="kpis" id="faultKpis" style="margin-top:12px"></div>
+      <div class="grid3" style="margin-top:12px">
+        <div><h3 style="margin:0;font-size:15px">Parts used, per 100 jobs with this fault code</h3><p class="desc" style="font-size:12px;color:var(--muted);margin:2px 0 6px">Blue = jobs that needed the part · orange = jobs where it was needed but not on the van.</p><div class="legend" id="lg-faultparts"></div><div class="chart" id="ch-faultparts"></div></div>
+        <div><h3 style="margin:0;font-size:15px">Suggested pre-load kit</h3><p class="desc" style="font-size:12px;color:var(--muted);margin:2px 0 6px">Rule: parts needed in ≥ 30% of this fault code's jobs.</p><div id="kitBox"></div></div>
+      </div>
+    </div>
+    <div class="card" style="margin-top:12px" id="c-freq">
+      <h3>Fault code → parts frequency table</h3>
+      <p class="desc">One row per fault code and part. “Used in” = jobs with the fault that needed the part ÷ all jobs with the fault. ⚑ Missing rate = times not on the van ÷ times needed, flagged above 20% (min 10 uses). Click a row for the fault profile.</p>
+      <div id="tbl-freq"></div>
+    </div>
+  </section>
+
+  <!-- PAGE 3 -->
+  <section class="page" id="page-people">
+    <div class="howto"><b>How to read this:</b> compare first-time-fix by region and by technician; a low rate with a high share of missing-part second visits points to van stock, a low rate with other reasons points to diagnosis. Click a technician for their profile.</div>
+    <div class="grid2">
+      <div class="card" id="c-region"><h3>First-time-fix rate by region</h3><p class="desc">Ranked highest to lowest. Dashed line = 70%. Click a bar to filter to that region.</p><div class="chart" id="ch-region"></div></div>
+      <div class="card" id="c-regionmiss"><h3>Missing-part second visits per 100 jobs, by region</h3><p class="desc">How many jobs out of 100 came back because a part was not on the van.</p><div class="chart" id="ch-regionmiss"></div></div>
+    </div>
+    <div class="card" style="margin-top:12px" id="c-techs">
+      <h3>Technicians</h3>
+      <p class="desc">⚑ = first-time-fix rate under 70% with at least 30 jobs in the filter. Search by ID, region or city; click a column to sort, a row to open the profile.</p>
+      <div id="tbl-techs"></div>
+    </div>
+  </section>
+
+  <!-- PAGE 4 -->
+  <section class="page" id="page-jobs">
+    <div class="howto"><b>How to read this:</b> every service job in the filter, one row each. Search any text (job ID, fault code, part, technician, city), sort by any column, and click a row for the job card.</div>
+    <div class="card" id="c-jobs"><div id="tbl-jobs"></div></div>
+  </section>
+
+  <p class="foot">All figures are computed in the browser from the bundled dummy dataset (service_jobs.csv: one row per job; parts needed and missing listed per job). Filters apply to every page and to the profiles. No forecasting or models: counts, shares and fixed thresholds only.</p>
+</div>
+
+<div class="drawer-bg" id="drawerBg"></div>
+<aside class="drawer" id="drawer" aria-hidden="true"><button class="btn close" id="drawerClose">Close ✕</button><div id="drawerBody"></div></aside>
+<div class="tip" id="tip"></div>
+</div>
+
+<script>
+const D = /*__DATA__*/null;
+</script>
+<script>
+(function(){
+"use strict";
+// ---------- data unpack ----------
+const M = D.months, R = D.regions, CITIES = D.cities, T = D.techs, B = D.brands, C = D.cats, F = D.faults, P = D.parts, RS = D.reasons;
+// job: [num, monthIdx, day, region, city, tech, brand, cat, fault, age, reason, days, [needed], [missing]]
+const JOBS = D.jobs.map(a => ({ id: "J" + String(a[0]).padStart(6, "0"), m: a[1], day: a[2], r: a[3], city: a[4], t: a[5], b: a[6], c: a[7], f: a[8], age: a[9], rs: a[10], days: a[11], need: a[12], miss: a[13], ftf: a[10] === 0, war: a[9] < 3 ? 0 : 1 }));
+const WAR = ["In warranty", "Out of warranty"];
+const MISSING = RS.indexOf("Missing part");
+const TH = { faultFtf: 0.70, faultMin: 30, techFtf: 0.70, techMin: 30, partMiss: 0.20, partMin: 10, kit: 0.30 };
+const reasonColors = ["", "var(--s1)", "var(--s2)", "var(--s3)", "var(--s4)"];
+const S = { from: 0, to: M.length - 1, r: -1, b: -1, c: -1, w: -1, tab: "overview", fault: null };
+
+// ---------- helpers ----------
+const $ = id => document.getElementById(id);
+const pct = (x, d = 1) => (x == null || isNaN(x)) ? "–" : (x * 100).toFixed(d) + "%";
+const fmt = x => x.toLocaleString("en-US");
+const monthLabel = i => { const [y, m] = M[i].split("-"); return ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][+m - 1] + " " + y.slice(2); };
+const dateOf = j => M[j.m] + "-" + String(j.day).padStart(2, "0");
+function el(tag, attrs, ...kids) {
+  const e = document.createElement(tag);
+  if (attrs) for (const k in attrs) {
+    if (k === "class") e.className = attrs[k];
+    else if (k === "text") e.textContent = attrs[k];
+    else if (k.startsWith("on")) e.addEventListener(k.slice(2), attrs[k]);
+    else e.setAttribute(k, attrs[k]);
+  }
+  for (const k of kids) if (k != null) e.append(k.nodeType ? k : document.createTextNode(k));
+  return e;
+}
+const NS = "http://www.w3.org/2000/svg";
+function sv(tag, attrs, text) { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); if (text != null) e.textContent = text; return e; }
+function flagTag(text) { return el("span", { class: "flag", text: "⚑ " + (text || "Flag") }); }
+
+// ---------- filtering & aggregation ----------
+function filtered(extra) {
+  return JOBS.filter(j => j.m >= S.from && j.m <= S.to && (S.r < 0 || j.r === S.r) && (S.b < 0 || j.b === S.b) && (S.c < 0 || j.c === S.c) && (S.w < 0 || j.war === S.w) && (!extra || extra(j)));
+}
+function agg(rows) {
+  const a = { n: rows.length, ftf: 0, sv: 0, svMiss: 0, missDays: 0, svDays: 0, withPart: 0, reasons: new Array(RS.length).fill(0) };
+  for (const j of rows) {
+    if (j.ftf) a.ftf++; else { a.sv++; a.svDays += j.days; a.reasons[j.rs]++; }
+    if (j.rs === MISSING) { a.svMiss++; a.missDays += j.days; }
+    if (j.need.length) a.withPart++;
+  }
+  a.rate = a.n ? a.ftf / a.n : NaN;
+  a.missShare = a.sv ? a.svMiss / a.sv : NaN;
+  a.avgMissDays = a.svMiss ? a.missDays / a.svMiss : NaN;
+  a.avgSvDays = a.sv ? a.svDays / a.sv : NaN;
+  return a;
+}
+function groupBy(rows, key) { const m = new Map(); for (const j of rows) { const k = key(j); if (!m.has(k)) m.set(k, []); m.get(k).push(j); } return m; }
+function partStats(rows) { // per part: needed, missing
+  const m = new Map();
+  for (const j of rows) {
+    for (const p of j.need) { if (!m.has(p)) m.set(p, { p, need: 0, miss: 0 }); m.get(p).need++; }
+    for (const p of j.miss) m.get(p).miss++;
+  }
+  return m;
+}
+function faultTable(rows) {
+  const out = [];
+  for (const [f, rs] of groupBy(rows, j => j.f)) { const a = agg(rs); out.push({ f, ...a, flagged: a.n >= TH.faultMin && a.rate < TH.faultFtf }); }
+  return out;
+}
+function techTable(rows) {
+  const out = [];
+  for (const [t, rs] of groupBy(rows, j => j.t)) { const a = agg(rs); out.push({ t, ...a, flagged: a.n >= TH.techMin && a.rate < TH.techFtf }); }
+  return out;
+}
+
+// ---------- tooltip ----------
+const tip = $("tip");
+function showTip(ev, title, rows) {
+  tip.replaceChildren(el("div", { class: "t", text: title }));
+  for (const [label, value, color] of rows) {
+    const l = el("span"); if (color) l.append(el("i", { style: "background:" + color })); l.append(label);
+    tip.append(el("div", { class: "r" }, l, el("b", { text: value })));
+  }
+  tip.style.display = "block";
+  const w = tip.offsetWidth, h = tip.offsetHeight;
+  let x = ev.clientX + 14, y = ev.clientY + 14;
+  if (x + w > innerWidth - 8) x = ev.clientX - w - 14;
+  if (y + h > innerHeight - 8) y = ev.clientY - h - 14;
+  tip.style.left = Math.max(8, x) + "px"; tip.style.top = Math.max(8, y) + "px";
+}
+function hideTip() { tip.style.display = "none"; }
+
+// ---------- charts ----------
+function niceMax(v) { if (v <= 0) return 1; const p = Math.pow(10, Math.floor(Math.log10(v))); const n = v / p; return (n <= 1 ? 1 : n <= 2 ? 2 : n <= 2.5 ? 2.5 : n <= 5 ? 5 : 10) * p; }
+
+function lineChart(host, pts, opt) {
+  host.replaceChildren();
+  if (!pts.length) { host.append(el("div", { class: "empty", text: "No jobs in this filter." })); return; }
+  const W = Math.max(280, host.clientWidth), H = opt.height || 230, m = { l: 40, r: 14, t: 12, b: 26 };
+  const iw = W - m.l - m.r, ih = H - m.t - m.b;
+  const vals = pts.map(p => p.v).filter(v => !isNaN(v));
+  let lo = opt.min != null ? opt.min : Math.min(...vals), hi = opt.max != null ? opt.max : Math.max(...vals);
+  lo = Math.min(lo, Math.floor(Math.min(...vals) * 20) / 20); hi = Math.max(hi, Math.ceil(Math.max(...vals) * 20) / 20);
+  const x = i => m.l + (pts.length === 1 ? iw / 2 : i * iw / (pts.length - 1));
+  const y = v => m.t + ih - (v - lo) / (hi - lo) * ih;
+  const svg = sv("svg", { width: W, height: H, role: "img", "aria-label": opt.label || "line chart" });
+  const steps = 5;
+  for (let k = 0; k <= steps; k++) {
+    const v = lo + (hi - lo) * k / steps, yy = y(v);
+    svg.append(sv("line", { x1: m.l, x2: W - m.r, y1: yy, y2: yy, stroke: k === 0 ? "var(--axis)" : "var(--grid)", "stroke-width": 1 }));
+    svg.append(sv("text", { x: m.l - 6, y: yy + 4, "text-anchor": "end" }, opt.fmt(v)));
+  }
+  const every = Math.ceil(pts.length / Math.max(2, Math.floor(iw / 52)));
+  pts.forEach((p, i) => { if ((i % every === 0 && (i === pts.length - 1 || pts.length - 1 - i >= every * 0.7)) || i === pts.length - 1) svg.append(sv("text", { x: x(i), y: H - 8, "text-anchor": "middle" }, p.label)); });
+  if (opt.ref != null && opt.ref >= lo && opt.ref <= hi) {
+    svg.append(sv("line", { x1: m.l, x2: W - m.r, y1: y(opt.ref), y2: y(opt.ref), stroke: "var(--crit)", "stroke-dasharray": "4 4", "stroke-width": 1.5 }));
+    svg.append(sv("text", { x: W - m.r, y: y(opt.ref) - 5, "text-anchor": "end", fill: "var(--crit)", style: "fill:var(--crit)" }, opt.refLabel || ""));
+  }
+  let d = ""; pts.forEach((p, i) => { if (!isNaN(p.v)) d += (d ? "L" : "M") + x(i) + "," + y(p.v); });
+  svg.append(sv("path", { d, fill: "none", stroke: "var(--s1)", "stroke-width": 2, "stroke-linejoin": "round", "stroke-linecap": "round" }));
+  pts.forEach((p, i) => { if (!isNaN(p.v)) svg.append(sv("circle", { cx: x(i), cy: y(p.v), r: 3.5, fill: "var(--s1)", stroke: "var(--card)", "stroke-width": 2 })); });
+  // last value label
+  const li = pts.length - 1; if (!isNaN(pts[li].v)) svg.append(sv("text", { x: x(li), y: y(pts[li].v) - 9, "text-anchor": "end", class: "lbl-strong" }, opt.fmt(pts[li].v)));
+  const cross = sv("line", { y1: m.t, y2: m.t + ih, stroke: "var(--axis)", "stroke-width": 1, visibility: "hidden" });
+  const dot = sv("circle", { r: 5, fill: "var(--s1)", stroke: "var(--card)", "stroke-width": 2, visibility: "hidden" });
+  svg.append(cross, dot);
+  const hit = sv("rect", { x: m.l, y: m.t, width: iw, height: ih, fill: "transparent" });
+  hit.addEventListener("mousemove", ev => {
+    const r = svg.getBoundingClientRect(); const px = ev.clientX - r.left;
+    const i = Math.max(0, Math.min(pts.length - 1, Math.round((px - m.l) / (iw / Math.max(1, pts.length - 1)))));
+    const p = pts[i]; cross.setAttribute("x1", x(i)); cross.setAttribute("x2", x(i)); cross.setAttribute("visibility", "visible");
+    if (!isNaN(p.v)) { dot.setAttribute("cx", x(i)); dot.setAttribute("cy", y(p.v)); dot.setAttribute("visibility", "visible"); }
+    showTip(ev, p.tipTitle || p.label, p.tip || [[opt.name || "Value", opt.fmt(p.v)]]);
+  });
+  hit.addEventListener("mouseleave", () => { cross.setAttribute("visibility", "hidden"); dot.setAttribute("visibility", "hidden"); hideTip(); });
+  svg.append(hit);
+  host.append(svg);
+}
+
+function stackedBars(host, labels, series, opt) {
+  host.replaceChildren();
+  const W = Math.max(280, host.clientWidth), H = opt.height || 230, m = { l: 40, r: 10, t: 12, b: 26 };
+  const iw = W - m.l - m.r, ih = H - m.t - m.b;
+  const totals = labels.map((_, i) => series.reduce((s, se) => s + se.values[i], 0));
+  const hi = niceMax(Math.max(1, ...totals));
+  const y = v => m.t + ih - v / hi * ih;
+  const svg = sv("svg", { width: W, height: H, role: "img", "aria-label": opt.label || "stacked bars" });
+  for (let k = 0; k <= 4; k++) { const v = hi * k / 4; svg.append(sv("line", { x1: m.l, x2: W - m.r, y1: y(v), y2: y(v), stroke: k === 0 ? "var(--axis)" : "var(--grid)" })); svg.append(sv("text", { x: m.l - 6, y: y(v) + 4, "text-anchor": "end" }, fmt(Math.round(v)))); }
+  const bw = iw / labels.length, barW = Math.min(36, bw * 0.68);
+  const every = Math.ceil(labels.length / Math.max(2, Math.floor(iw / 52)));
+  labels.forEach((lab, i) => {
+    const cx = m.l + bw * i + bw / 2; let acc = 0;
+    if ((i % every === 0 && labels.length - 1 - i >= every * 0.7) || i === labels.length - 1) svg.append(sv("text", { x: cx, y: H - 8, "text-anchor": "middle" }, lab));
+    const g = sv("g", {});
+    series.forEach((se, si) => {
+      const v = se.values[i]; if (!v) return;
+      const y0 = y(acc), y1 = y(acc + v); acc += v;
+      const h = Math.max(0, y0 - y1 - 2);
+      const isTop = series.slice(si + 1).every(s2 => !s2.values[i]);
+      const rr = isTop ? Math.min(4, h / 2, barW / 2) : 0;
+      const x0 = cx - barW / 2, top = y1;
+      const d = `M${x0},${top + h}V${top + rr}Q${x0},${top} ${x0 + rr},${top}H${x0 + barW - rr}Q${x0 + barW},${top} ${x0 + barW},${top + rr}V${top + h}Z`;
+      g.append(sv("path", { d, fill: se.color }));
+    });
+    const hit = sv("rect", { x: m.l + bw * i, y: m.t, width: bw, height: ih, fill: "transparent" });
+    hit.addEventListener("mousemove", ev => showTip(ev, opt.tipTitle ? opt.tipTitle(i) : lab, [...series.map(se => [se.name, fmt(se.values[i]), se.color]), ["Total", fmt(totals[i])]]));
+    hit.addEventListener("mouseleave", hideTip);
+    svg.append(g, hit);
+  });
+  host.append(svg);
+}
+
+// horizontal bars: items [{label, sub, v, flagged, tip, onClick, color}]
+function hBars(host, items, opt) {
+  host.replaceChildren();
+  if (!items.length) { host.append(el("div", { class: "empty", text: "No jobs in this filter." })); return; }
+  const W = Math.max(280, host.clientWidth), rowH = opt.rowH || 26, m = { l: opt.labelW || 150, r: 64, t: 6, b: opt.ref != null ? 20 : 6 };
+  const H = m.t + m.b + items.length * rowH;
+  const iw = W - m.l - m.r;
+  const hi = opt.max != null ? opt.max : niceMax(Math.max(...items.map(d => d.v)) || 1);
+  const x = v => m.l + v / hi * iw;
+  const svg = sv("svg", { width: W, height: H, role: "img", "aria-label": opt.label || "bar chart" });
+  svg.append(sv("line", { x1: m.l, x2: m.l, y1: m.t, y2: H - m.b, stroke: "var(--axis)" }));
+  if (opt.ref != null) {
+    svg.append(sv("line", { x1: x(opt.ref), x2: x(opt.ref), y1: m.t, y2: H - m.b + 4, stroke: "var(--crit)", "stroke-dasharray": "4 4", "stroke-width": 1.5, opacity: 0.8 }));
+    svg.append(sv("text", { x: x(opt.ref), y: H - 4, "text-anchor": "middle", style: "fill:var(--crit)" }, opt.refLabel || ""));
+  }
+  items.forEach((d, i) => {
+    const yy = m.t + i * rowH, bh = Math.min(16, rowH - 8), by = yy + (rowH - bh) / 2;
+    const g = sv("g", { style: d.onClick ? "cursor:pointer" : "" });
+    const label = (d.flagged ? "⚑ " : "") + d.label;
+    g.append(sv("text", { x: m.l - 8, y: yy + rowH / 2 + 4, "text-anchor": "end", class: d.flagged ? "lbl-strong" : "lbl-ink", style: d.flagged ? "fill:var(--crit)" : "" }, label.length > opt.maxChars ? label.slice(0, opt.maxChars - 1) + "…" : label));
+    const w = Math.max(1, x(d.v) - m.l), rr = Math.min(4, bh / 2, w / 2);
+    const x0 = m.l + 1;
+    g.append(sv("path", { d: `M${x0},${by}H${x0 + w - rr}Q${x0 + w},${by} ${x0 + w},${by + rr}V${by + bh - rr}Q${x0 + w},${by + bh} ${x0 + w - rr},${by + bh}H${x0}Z`, fill: d.color || (d.flagged ? "var(--crit)" : "var(--s1)") }));
+    g.append(sv("text", { x: x0 + w + 6, y: yy + rowH / 2 + 4, class: "lbl-ink", style: "paint-order:stroke;stroke:var(--card);stroke-width:4px;stroke-linejoin:round" }, opt.fmt(d.v) + (d.sub ? "  " + d.sub : "")));
+    const hit = sv("rect", { x: 0, y: yy, width: W, height: rowH, fill: "transparent" });
+    hit.addEventListener("mousemove", ev => showTip(ev, d.tipTitle || d.label, d.tip || [["Value", opt.fmt(d.v)]]));
+    hit.addEventListener("mouseleave", hideTip);
+    if (d.onClick) hit.addEventListener("click", () => { hideTip(); d.onClick(); });
+    g.append(hit); svg.append(g);
+  });
+  host.append(svg);
+}
+
+// grouped horizontal bars: two series in same unit
+function hBars2(host, items, names, colors, opt) {
+  host.replaceChildren();
+  if (!items.length) { host.append(el("div", { class: "empty", text: "No parts recorded for these jobs." })); return; }
+  const W = Math.max(280, host.clientWidth), rowH = 40, m = { l: opt.labelW || 190, r: 56, t: 4, b: 4 };
+  const H = m.t + m.b + items.length * rowH, iw = W - m.l - m.r;
+  const hi = opt.max || 100, x = v => v / hi * iw;
+  const svg = sv("svg", { width: W, height: H, role: "img", "aria-label": opt.label || "grouped bars" });
+  svg.append(sv("line", { x1: m.l, x2: m.l, y1: m.t, y2: H - m.b, stroke: "var(--axis)" }));
+  items.forEach((d, i) => {
+    const yy = m.t + i * rowH;
+    const lab = d.label.length > opt.maxChars ? d.label.slice(0, opt.maxChars - 1) + "…" : d.label;
+    svg.append(sv("text", { x: m.l - 8, y: yy + 17, "text-anchor": "end", class: d.kit ? "lbl-strong" : "lbl-ink" }, lab));
+    if (d.kit) svg.append(sv("text", { x: m.l - 8, y: yy + 30, "text-anchor": "end", style: "fill:var(--good);font-size:10px;font-weight:650" }, "IN KIT"));
+    [d.a, d.b].forEach((v, k) => {
+      const by = yy + 6 + k * 15, bh = 12, w = Math.max(v > 0 ? 2 : 0, x(v)), rr = Math.min(4, bh / 2, w / 2), x0 = m.l + 1;
+      if (w > 0) svg.append(sv("path", { d: `M${x0},${by}H${x0 + w - rr}Q${x0 + w},${by} ${x0 + w},${by + rr}V${by + bh - rr}Q${x0 + w},${by + bh} ${x0 + w - rr},${by + bh}H${x0}Z`, fill: colors[k] }));
+      svg.append(sv("text", { x: x0 + w + 5, y: by + 10, class: "lbl-ink" }, v.toFixed(1)));
+    });
+    const hit = sv("rect", { x: 0, y: yy, width: W, height: rowH, fill: "transparent" });
+    hit.addEventListener("mousemove", ev => showTip(ev, d.label, d.tip)); hit.addEventListener("mouseleave", hideTip);
+    svg.append(hit);
+  });
+  host.append(svg);
+}
+
+function legend(host, items) { host.replaceChildren(...items.map(([n, c]) => el("span", {}, el("i", { style: "background:" + c }), n))); }
+
+// ---------- sortable / searchable table ----------
+function dataTable(host, cols, rows, opt) {
+  const st = host._st || (host._st = { q: "", key: opt.sortKey, dir: opt.sortDir || "asc", page: 0 });
+  host.replaceChildren();
+  const search = el("input", { class: "search", type: "search", placeholder: opt.placeholder || "Search…", value: st.q, "aria-label": "Search table" });
+  const count = el("span", { class: "count" });
+  host.append(el("div", { class: "tablebar" }, search, count));
+  const wrap = el("div", { class: "scrollx" }); host.append(wrap);
+  const pager = el("div", { class: "pager" }); host.append(pager);
+  const pageSize = opt.pageSize || 1e9;
+  function draw() {
+    const q = st.q.trim().toLowerCase();
+    let rs = q ? rows.filter(r => (r._s || (r._s = cols.map(c => String(c.text ? c.text(r) : c.get(r))).join(" ").toLowerCase())).includes(q)) : rows.slice();
+    const col = cols.find(c => c.key === st.key);
+    if (col) rs.sort((a, b) => { const va = col.get(a), vb = col.get(b); const r = (typeof va === "number" && typeof vb === "number") ? va - vb : String(va).localeCompare(String(vb)); return st.dir === "asc" ? r : -r; });
+    count.textContent = fmt(rs.length) + " rows";
+    const pages = Math.max(1, Math.ceil(rs.length / pageSize)); st.page = Math.min(st.page, pages - 1);
+    const view = rs.slice(st.page * pageSize, (st.page + 1) * pageSize);
+    const thead = el("tr", {}, ...cols.map(c => { const th = el("th", { class: c.num ? "num" : "", text: c.label, scope: "col" }); if (c.key === st.key) th.setAttribute("aria-sort", st.dir === "asc" ? "ascending" : "descending"); th.addEventListener("click", () => { if (st.key === c.key) st.dir = st.dir === "asc" ? "desc" : "asc"; else { st.key = c.key; st.dir = c.num ? "desc" : "asc"; } draw(); }); return th; }));
+    const tbody = el("tbody");
+    for (const r of view) {
+      const tr = el("tr", { tabindex: "0" });
+      for (const c of cols) { const td = el("td", { class: c.num ? "num" : "" }); const v = c.render ? c.render(r) : (c.text ? c.text(r) : c.get(r)); if (v && v.nodeType) td.append(v); else td.textContent = v == null ? "" : v; tr.append(td); }
+      if (opt.onRow) { tr.addEventListener("click", () => opt.onRow(r)); tr.addEventListener("keydown", e => { if (e.key === "Enter") opt.onRow(r); }); }
+      tbody.append(tr);
+    }
+    const table = el("table", { class: "dt" }, el("thead", {}, thead), tbody);
+    wrap.replaceChildren(rs.length ? table : el("div", { class: "empty", text: "Nothing matches." }));
+    pager.replaceChildren();
+    if (pages > 1) {
+      pager.append(el("button", { class: "btn", text: "‹ Prev", onclick: () => { st.page = Math.max(0, st.page - 1); draw(); } }), el("span", { text: `Page ${st.page + 1} of ${pages}` }), el("button", { class: "btn", text: "Next ›", onclick: () => { st.page = Math.min(pages - 1, st.page + 1); draw(); } }));
+    }
+  }
+  search.addEventListener("input", () => { st.q = search.value; st.page = 0; draw(); });
+  draw();
+}
+
+// ---------- KPI card ----------
+function kpi(label, value, sub, calc, flagged) {
+  return el("div", { class: "kpi" + (flagged ? " flagged" : "") }, el("div", { class: "lbl", text: label }), el("div", { class: "val", text: value }), sub ? el("div", { class: "sub", text: sub }) : null, calc ? el("div", { class: "calc", text: calc }) : null);
+}
+
+// ---------- pages ----------
+function renderOverview(rows) {
+  const a = agg(rows);
+  const ft = faultTable(rows).sort((x, y) => x.rate - y.rate);
+  const nFlag = ft.filter(d => d.flagged).length;
+  const byM = groupBy(rows, j => j.m);
+  const lastM = S.to; const lastA = agg(byM.get(lastM) || []);
+  $("kpis").replaceChildren(
+    kpi("Service jobs", fmt(a.n), `${monthLabel(S.from)} – ${monthLabel(S.to)}`, "Count of jobs whose first visit falls in the period."),
+    kpi("First-time-fix rate", pct(a.rate), `Latest month (${monthLabel(lastM)}): ${pct(lastA.rate)}`, "Jobs closed on the first visit ÷ all jobs.", a.rate < TH.faultFtf),
+    kpi("Second visits", fmt(a.sv), pct(a.n ? a.sv / a.n : NaN) + " of jobs", "Jobs that needed at least one more visit."),
+    kpi("…caused by a missing part", pct(a.missShare), fmt(a.svMiss) + " second visits", "Second visits with reason “Missing part” ÷ all second visits."),
+    kpi("Days lost per missing part", isNaN(a.avgMissDays) ? "–" : a.avgMissDays.toFixed(1), "days from 1st to 2nd visit", "Average days between visits, missing-part second visits only."),
+    kpi("Fault codes flagged", String(nFlag), `of ${ft.length} fault codes in filter`, "Fault codes with FTF < 70% and ≥ 30 jobs.", nFlag > 0)
+  );
+  // trend
+  const months = []; for (let i = S.from; i <= S.to; i++) months.push(i);
+  lineChart($("ch-trend"), months.map(i => { const g = agg(byM.get(i) || []); return { label: monthLabel(i), v: g.rate, tip: [["First-time-fix", pct(g.rate)], ["Jobs", fmt(g.n)], ["Second visits", fmt(g.sv)]] }; }), { fmt: v => pct(v, 0), ref: TH.faultFtf, refLabel: "70% threshold", min: 0.6, max: 0.85, label: "Monthly first-time-fix rate" });
+  const rsIdx = RS.map((_, i) => i).filter(i => i > 0);
+  legend($("lg-svtrend"), rsIdx.map(i => [RS[i], reasonColors[i]]));
+  stackedBars($("ch-svtrend"), months.map(monthLabel), rsIdx.map(i => ({ name: RS[i], color: reasonColors[i], values: months.map(m => (byM.get(m) || []).filter(j => j.rs === i).length) })), { label: "Second visits by month and reason" });
+  // ranking (top 12 lowest)
+  const top = ft.filter(d => d.n >= 5).slice(0, 12);
+  hBars($("ch-rank"), top.map(d => ({ label: F[d.f][0] + " · " + F[d.f][2], v: d.rate, flagged: d.flagged, sub: `(${fmt(d.n)} jobs)`, tipTitle: F[d.f][0] + " · " + F[d.f][2], tip: [["First-time-fix", pct(d.rate)], ["Jobs", fmt(d.n)], ["Second visits", fmt(d.sv)], ["…missing part", fmt(d.svMiss)], ["Category", F[d.f][1]]], onClick: () => openFault(d.f) })), { fmt: v => pct(v, 1), max: 1, ref: TH.faultFtf, refLabel: "70%", labelW: 220, maxChars: 34, label: "Fault codes ranked by first-time-fix" });
+  // reasons
+  hBars($("ch-reasons"), rsIdx.map(i => ({ label: RS[i], v: a.sv ? a.reasons[i] / a.sv : 0, color: reasonColors[i], sub: `(${fmt(a.reasons[i])})`, tip: [["Second visits", fmt(a.reasons[i])], ["Share", pct(a.sv ? a.reasons[i] / a.sv : 0)]] })), { fmt: v => pct(v, 0), max: 1, labelW: 150, maxChars: 24, label: "Second-visit reasons" });
+  // flags
+  const parts = partStats(rows); const pFlag = [...parts.values()].filter(p => p.need >= TH.partMin && p.miss / p.need > TH.partMiss).length;
+  const tFlag = techTable(rows).filter(d => d.flagged).length;
+  const fr = (rule, small, n, go) => el("div", { class: "flagrow" }, el("div", { class: "rule" }, rule, el("small", { text: small })), el("div", { style: "display:flex;align-items:center;gap:10px" }, el("span", { class: "n" + (n ? "" : " zero"), text: String(n) }), el("button", { class: "btn", text: "View", onclick: go })));
+  $("flaglist").replaceChildren(
+    fr("Fault code FTF < 70%", "minimum 30 jobs in filter", nFlag, () => setTab("parts")),
+    fr("Part missing from van > 20% of the time", "missing ÷ needed, minimum 10 uses", pFlag, () => { setTab("parts"); const h = $("tbl-freq"); h._st.key = "missRate"; h._st.dir = "desc"; renderParts(filtered()); }),
+    fr("Technician FTF < 70%", "minimum 30 jobs in filter", tFlag, () => { setTab("people"); const h = $("tbl-techs"); h._st.key = "rate"; h._st.dir = "asc"; renderPeople(filtered()); })
+  );
+  // category
+  const ct = [...groupBy(rows, j => j.c)].map(([c, rs]) => ({ c, ...agg(rs) })).sort((x, y) => y.rate - x.rate);
+  hBars($("ch-cat"), ct.map(d => ({ label: C[d.c], v: d.rate, flagged: d.n >= TH.faultMin && d.rate < TH.faultFtf, sub: `(${fmt(d.n)} jobs)`, tip: [["First-time-fix", pct(d.rate)], ["Jobs", fmt(d.n)], ["…missing part 2nd visits", fmt(d.svMiss)]], onClick: () => { S.c = d.c; $("fCat").value = d.c; update(); } })), { fmt: v => pct(v, 1), max: 1, ref: TH.faultFtf, refLabel: "70%", labelW: 130, maxChars: 20, label: "FTF by category" });
+  // parts missing
+  const pm = [...parts.values()].filter(p => p.miss > 0).sort((x, y) => y.miss - x.miss).slice(0, 10);
+  hBars($("ch-missparts"), pm.map(p => ({ label: P[p.p][1], v: p.miss, flagged: p.need >= TH.partMin && p.miss / p.need > TH.partMiss, sub: `· ${pct(p.miss / p.need, 0)} of uses`, tip: [["Times missing", fmt(p.miss)], ["Times needed", fmt(p.need)], ["Missing rate", pct(p.miss / p.need)], ["Assumed van stock", pct(P[p.p][2], 0)]] })), { fmt: v => fmt(v), labelW: 190, maxChars: 28, label: "Parts most often missing" });
+}
+
+function freqRows(rows) {
+  const out = [];
+  for (const [f, rs] of groupBy(rows, j => j.f)) {
+    const ps = partStats(rs);
+    for (const p of ps.values()) out.push({ f, p: p.p, jobs: rs.length, need: p.need, share: p.need / rs.length, miss: p.miss, missRate: p.need ? p.miss / p.need : 0, kit: p.need / rs.length >= TH.kit, flagged: p.need >= TH.partMin && p.miss / p.need > TH.partMiss });
+  }
+  return out;
+}
+function faultDetail(rs, f) {
+  const a = agg(rs); const ps = [...partStats(rs).values()].sort((x, y) => y.need - x.need);
+  return { a, ps, flagged: a.n >= TH.faultMin && a.rate < TH.faultFtf };
+}
+function renderParts(rows) {
+  // selector
+  const ft = faultTable(rows).sort((x, y) => x.rate - y.rate);
+  const sel = $("faultSel"); const prev = S.fault;
+  sel.replaceChildren(...ft.map(d => el("option", { value: d.f, text: `${d.flagged ? "⚑ " : ""}${F[d.f][0]} · ${F[d.f][2]} (${F[d.f][1]}) — FTF ${pct(d.rate, 0)}` })));
+  if (!ft.length) { $("faultKpis").replaceChildren(); $("ch-faultparts").replaceChildren(el("div", { class: "empty", text: "No jobs in this filter." })); $("kitBox").replaceChildren(); dataTable($("tbl-freq"), [], [], {}); return; }
+  if (prev == null || !ft.some(d => d.f === prev)) S.fault = ft[0].f;
+  sel.value = S.fault;
+  const rs = rows.filter(j => j.f === S.fault); const { a, ps, flagged } = faultDetail(rs, S.fault);
+  $("faultKpis").replaceChildren(
+    kpi("Jobs with this fault", fmt(a.n), F[S.fault][1], "Jobs in the filter with this fault code."),
+    kpi("First-time-fix rate", pct(a.rate), flagged ? "⚑ under 70% threshold" : "at or above 70%", "Closed on first visit ÷ jobs.", flagged),
+    kpi("Jobs needing ≥ 1 part", pct(a.n ? a.withPart / a.n : NaN), fmt(a.withPart) + " jobs", "Jobs with at least one part recorded ÷ jobs."),
+    kpi("Missing-part second visits", fmt(a.svMiss), pct(a.missShare) + " of its second visits", "Second visits with reason “Missing part”.")
+  );
+  const colors = ["var(--s1)", "var(--s2)"];
+  legend($("lg-faultparts"), [["Needed per 100 jobs", colors[0]], ["Missing from van per 100 jobs", colors[1]]]);
+  hBars2($("ch-faultparts"), ps.map(p => ({ label: P[p.p][1], a: p.need / a.n * 100, b: p.miss / a.n * 100, kit: p.need / a.n >= TH.kit, tip: [["Needed in", `${fmt(p.need)} jobs (${pct(p.need / a.n)})`], ["Missing on van", `${fmt(p.miss)} times (${pct(p.need ? p.miss / p.need : 0)} of uses)`], ["Part code", P[p.p][0]]] })), ["Needed", "Missing"], colors, { max: 100, labelW: 190, maxChars: 28, label: "Parts used for the selected fault code" });
+  const kit = ps.filter(p => p.need / a.n >= TH.kit);
+  $("kitBox").replaceChildren(
+    kit.length ? el("div", { class: "chips" }, ...kit.map(p => el("span", { class: "chip" }, el("b", { text: P[p.p][1] }), ` · ${pct(p.need / a.n, 0)}`))) : el("p", { class: "ok", text: "No single part is needed in 30% of jobs." }),
+    el("p", { style: "font-size:12px;color:var(--ink2);margin-top:12px" }, `Carrying this kit would have covered every needed part in `, el("b", { text: pct(rs.length ? rs.filter(j => j.need.every(p => kit.some(k => k.p === p))).length / rs.length : NaN) }), ` of this fault code's jobs.`),
+    el("p", { style: "font-size:11px;color:var(--muted)" , text: "Coverage = jobs whose needed parts are all in the kit (including jobs needing no part) ÷ all jobs with this fault code."})
+  );
+  // frequency table
+  const fr = freqRows(rows);
+  dataTable($("tbl-freq"), [
+    { key: "code", label: "Fault code", get: r => F[r.f][0] },
+    { key: "desc", label: "Fault", get: r => F[r.f][2] },
+    { key: "cat", label: "Category", get: r => F[r.f][1] },
+    { key: "part", label: "Part", get: r => P[r.p][1] },
+    { key: "jobs", label: "Jobs with fault", num: true, get: r => r.jobs, text: r => fmt(r.jobs) },
+    { key: "need", label: "Times used", num: true, get: r => r.need, text: r => fmt(r.need) },
+    { key: "share", label: "Used in", num: true, get: r => r.share, text: r => pct(r.share) },
+    { key: "miss", label: "Missing on van", num: true, get: r => r.miss, text: r => fmt(r.miss) },
+    { key: "missRate", label: "Missing rate", num: true, get: r => r.missRate, text: r => pct(r.missRate) },
+    { key: "kitf", label: "Kit / flag", get: r => (r.kit ? "kit " : "") + (r.flagged ? "flag" : ""), render: r => { const s = el("span", { style: "display:flex;gap:4px;flex-wrap:wrap" }); if (r.kit) s.append(el("span", { class: "kit", text: "✓ Kit" })); if (r.flagged) s.append(flagTag("Restock")); return s; } },
+  ], fr, { sortKey: "code", sortDir: "asc", placeholder: "Search fault code, part, category…", pageSize: 60, onRow: r => openFault(r.f) });
+  if (!$("tbl-freq")._sorted) { $("tbl-freq")._sorted = true; }
+}
+
+function renderPeople(rows) {
+  const rt = [...groupBy(rows, j => j.r)].map(([r, rs]) => ({ r, ...agg(rs) })).sort((x, y) => y.rate - x.rate);
+  hBars($("ch-region"), rt.map(d => ({ label: R[d.r], v: d.rate, flagged: d.n >= TH.faultMin && d.rate < TH.faultFtf, sub: `(${fmt(d.n)} jobs)`, tip: [["First-time-fix", pct(d.rate)], ["Jobs", fmt(d.n)], ["Second visits", fmt(d.sv)], ["…missing part", fmt(d.svMiss)], ["Avg days lost / missing part", isNaN(d.avgMissDays) ? "–" : d.avgMissDays.toFixed(1)]], onClick: () => { S.r = d.r; $("fRegion").value = d.r; update(); } })), { fmt: v => pct(v, 1), max: 1, ref: TH.faultFtf, refLabel: "70%", labelW: 150, maxChars: 22, label: "FTF by region" });
+  const rm = rt.slice().sort((x, y) => y.svMiss / y.n - x.svMiss / x.n);
+  hBars($("ch-regionmiss"), rm.map(d => ({ label: R[d.r], v: d.svMiss / d.n * 100, sub: `· ${isNaN(d.avgMissDays) ? "–" : d.avgMissDays.toFixed(1)} days lost each`, tip: [["Per 100 jobs", (d.svMiss / d.n * 100).toFixed(1)], ["Missing-part 2nd visits", fmt(d.svMiss)], ["Jobs", fmt(d.n)], ["Avg days to 2nd visit", isNaN(d.avgMissDays) ? "–" : d.avgMissDays.toFixed(1)]] })), { fmt: v => v.toFixed(1), labelW: 150, maxChars: 22, label: "Missing-part second visits per 100 jobs by region" });
+  const tt = techTable(rows);
+  dataTable($("tbl-techs"), [
+    { key: "id", label: "Technician", get: r => T[r.t][0] },
+    { key: "region", label: "Region", get: r => R[T[r.t][1]] },
+    { key: "city", label: "City", get: r => CITIES[T[r.t][2]] },
+    { key: "n", label: "Jobs", num: true, get: r => r.n, text: r => fmt(r.n) },
+    { key: "rate", label: "FTF rate", num: true, get: r => r.rate, text: r => pct(r.rate) },
+    { key: "sv", label: "2nd visits", num: true, get: r => r.sv, text: r => fmt(r.sv) },
+    { key: "svMiss", label: "…missing part", num: true, get: r => r.svMiss, text: r => fmt(r.svMiss) },
+    { key: "missShare", label: "Missing-part share", num: true, get: r => isNaN(r.missShare) ? -1 : r.missShare, text: r => pct(r.missShare) },
+    { key: "days", label: "Avg days to 2nd visit", num: true, get: r => isNaN(r.avgSvDays) ? -1 : r.avgSvDays, text: r => isNaN(r.avgSvDays) ? "–" : r.avgSvDays.toFixed(1) },
+    { key: "flag", label: "Flag", get: r => r.flagged ? "flag" : "", render: r => r.flagged ? flagTag("FTF < 70%") : el("span", { class: "ok", text: "—" }) },
+  ], tt, { sortKey: "rate", sortDir: "asc", placeholder: "Search technician, region, city…", onRow: r => openTech(r.t) });
+}
+
+function renderJobs(rows) {
+  dataTable($("tbl-jobs"), [
+    { key: "id", label: "Job", get: r => r.id },
+    { key: "date", label: "First visit", get: r => dateOf(r) },
+    { key: "region", label: "Region", get: r => R[r.r] },
+    { key: "city", label: "City", get: r => CITIES[r.city] },
+    { key: "tech", label: "Technician", get: r => T[r.t][0] },
+    { key: "brand", label: "Brand", get: r => B[r.b] },
+    { key: "cat", label: "Category", get: r => C[r.c] },
+    { key: "fault", label: "Fault code", get: r => F[r.f][0] + " " + F[r.f][2], render: r => F[r.f][0] },
+    { key: "parts", label: "Parts needed", get: r => r.need.map(p => P[p][1]).join(", ") || "none" },
+    { key: "miss", label: "Missing on van", get: r => r.miss.map(p => P[p][1]).join(", ") || "", render: r => r.miss.length ? el("span", { style: "color:var(--crit)", text: r.miss.map(p => P[p][1]).join(", ") }) : "" },
+    { key: "out", label: "Outcome", get: r => r.ftf ? "Fixed first visit" : "2nd visit: " + RS[r.rs] },
+    { key: "days", label: "Days to fix", num: true, get: r => r.days },
+  ], rows, { sortKey: "date", sortDir: "desc", placeholder: "Search job, fault code, part, technician, city…", pageSize: 50, onRow: r => openJob(r) });
+}
+
+// ---------- drawer / click-through ----------
+const drawer = $("drawer"), dbg = $("drawerBg");
+function openDrawer(...kids) { $("drawerBody").replaceChildren(...kids); drawer.classList.add("open"); dbg.classList.add("open"); drawer.setAttribute("aria-hidden", "false"); drawer.scrollTop = 0; }
+function closeDrawer() { drawer.classList.remove("open"); dbg.classList.remove("open"); drawer.setAttribute("aria-hidden", "true"); hideTip(); }
+$("drawerClose").onclick = closeDrawer; dbg.onclick = closeDrawer; addEventListener("keydown", e => { if (e.key === "Escape") closeDrawer(); });
+function filterNote() { return el("p", { style: "font-size:12px;color:var(--muted);margin:4px 0 12px", text: `Within current filters: ${monthLabel(S.from)} – ${monthLabel(S.to)}${S.r >= 0 ? " · " + R[S.r] : ""}${S.b >= 0 ? " · " + B[S.b] : ""}${S.c >= 0 ? " · " + C[S.c] : ""}${S.w >= 0 ? " · " + WAR[S.w] : ""}` }); }
+function card(title, desc, body) { return el("div", { class: "card", style: "margin-top:12px" }, el("h3", { text: title }), desc ? el("p", { class: "desc", text: desc }) : null, body); }
+function monthly(rs) { const byM = groupBy(rs, j => j.m); const out = []; for (let i = S.from; i <= S.to; i++) { const g = agg(byM.get(i) || []); out.push({ label: monthLabel(i), v: g.n ? g.rate : NaN, tip: [["First-time-fix", pct(g.rate)], ["Jobs", fmt(g.n)]] }); } return out; }
+
+function openFault(f) {
+  const rs = filtered(j => j.f === f); const { a, ps, flagged } = faultDetail(rs, f);
+  const h = el("div"); const c1 = el("div", { class: "chart" }), c2 = el("div", { class: "chart" }), c3 = el("div", { class: "chart" }), lg = el("div", { class: "legend" });
+  h.append(
+    el("h2", {}, F[f][0] + " · " + F[f][2], " ", flagged ? flagTag("FTF < 70%") : null),
+    el("p", { style: "margin:2px 0;color:var(--ink2)", text: F[f][1] + " fault code profile" }), filterNote(),
+    el("div", { class: "kpis" }, kpi("Jobs", fmt(a.n)), kpi("First-time-fix", pct(a.rate), null, null, flagged), kpi("Missing-part 2nd visits", fmt(a.svMiss), pct(a.missShare) + " of 2nd visits"), kpi("Avg days lost / missing part", isNaN(a.avgMissDays) ? "–" : a.avgMissDays.toFixed(1))),
+    card("Parts used, per 100 jobs", "Blue = needed · orange = needed but not on the van. Bold = in suggested kit (≥ 30%).", el("div", {}, lg, c1)),
+    card("First-time-fix rate by month", null, c2),
+    card("First-time-fix rate by region", "Dashed line = 70%.", c3),
+    el("div", { style: "margin-top:12px" }, el("button", { class: "btn", text: "Show these jobs in the job list →", onclick: () => { closeDrawer(); setTab("jobs"); const t = $("tbl-jobs"); t._st.q = F[f][0]; t._st.page = 0; renderJobs(filtered()); } }))
+  );
+  openDrawer(h);
+  legend(lg, [["Needed per 100 jobs", "var(--s1)"], ["Missing from van per 100 jobs", "var(--s2)"]]);
+  hBars2(c1, ps.map(p => ({ label: P[p.p][1], a: p.need / a.n * 100, b: p.miss / a.n * 100, kit: p.need / a.n >= TH.kit, tip: [["Needed in", `${fmt(p.need)} jobs (${pct(p.need / a.n)})`], ["Missing on van", `${fmt(p.miss)} times`]] })), [], ["var(--s1)", "var(--s2)"], { max: 100, labelW: 180, maxChars: 26 });
+  lineChart(c2, monthly(rs), { fmt: v => pct(v, 0), ref: TH.faultFtf, refLabel: "70%", min: 0, max: 1, height: 200 });
+  const rt = [...groupBy(rs, j => j.r)].map(([r, x]) => ({ r, ...agg(x) })).sort((x, y) => y.rate - x.rate);
+  hBars(c3, rt.map(d => ({ label: R[d.r], v: d.rate, sub: `(${d.n})`, flagged: d.n >= TH.faultMin && d.rate < TH.faultFtf, tip: [["FTF", pct(d.rate)], ["Jobs", fmt(d.n)]] })), { fmt: v => pct(v, 0), max: 1, ref: TH.faultFtf, refLabel: "70%", labelW: 150, maxChars: 22 });
+}
+function openTech(t) {
+  const rs = filtered(j => j.t === t); const a = agg(rs); const flagged = a.n >= TH.techMin && a.rate < TH.techFtf;
+  const all = agg(filtered(j => j.r === T[t][1]));
+  const c1 = el("div", { class: "chart" }), c2 = el("div", { class: "chart" }), c3 = el("div", { class: "chart" });
+  openDrawer(el("div", {},
+    el("h2", {}, "Technician " + T[t][0], " ", flagged ? flagTag("FTF < 70%") : null),
+    el("p", { style: "margin:2px 0;color:var(--ink2)", text: `${R[T[t][1]]} · ${CITIES[T[t][2]]} · ${T[t][3]} years' tenure` }), filterNote(),
+    el("div", { class: "kpis" }, kpi("Jobs", fmt(a.n)), kpi("First-time-fix", pct(a.rate), `Region average: ${pct(all.rate)}`, null, flagged), kpi("Second visits", fmt(a.sv), pct(a.missShare) + " for a missing part"), kpi("Avg days to 2nd visit", isNaN(a.avgSvDays) ? "–" : a.avgSvDays.toFixed(1))),
+    card("First-time-fix rate by month", null, c1),
+    card("Second visits by reason", null, c2),
+    card("First-time-fix by fault code", "This technician's 10 most frequent fault codes. Click a bar for the fault profile.", c3),
+    el("div", { style: "margin-top:12px" }, el("button", { class: "btn", text: "Show this technician's jobs →", onclick: () => { closeDrawer(); setTab("jobs"); const tb = $("tbl-jobs"); tb._st.q = T[t][0]; tb._st.page = 0; renderJobs(filtered()); } }))
+  ));
+  lineChart(c1, monthly(rs), { fmt: v => pct(v, 0), ref: TH.techFtf, refLabel: "70%", min: 0, max: 1, height: 200 });
+  hBars(c2, RS.map((_, i) => i).filter(i => i > 0).map(i => ({ label: RS[i], v: a.reasons[i], color: reasonColors[i], tip: [["Second visits", fmt(a.reasons[i])]] })), { fmt: v => fmt(v), labelW: 160, maxChars: 24 });
+  const ft = faultTable(rs).sort((x, y) => y.n - x.n).slice(0, 10).sort((x, y) => x.rate - y.rate);
+  hBars(c3, ft.map(d => ({ label: F[d.f][0] + " · " + F[d.f][2], v: d.rate, sub: `(${d.n})`, flagged: d.n >= TH.faultMin && d.rate < TH.faultFtf, tip: [["FTF", pct(d.rate)], ["Jobs", fmt(d.n)], ["Missing-part 2nd visits", fmt(d.svMiss)]], onClick: () => openFault(d.f) })), { fmt: v => pct(v, 0), max: 1, ref: TH.faultFtf, refLabel: "70%", labelW: 220, maxChars: 32 });
+}
+function openJob(j) {
+  const dl = el("dl", { class: "dl" });
+  const add = (k, v) => dl.append(el("dt", { text: k }), el("dd", {}, v));
+  add("First visit", dateOf(j)); add("Region / city", `${R[j.r]} · ${CITIES[j.city]}`);
+  add("Technician", el("button", { class: "link", text: T[j.t][0], onclick: () => openTech(j.t) }));
+  add("Brand / category", `${B[j.b]} · ${C[j.c]}`); add("Product age", `${j.age} year${j.age === 1 ? "" : "s"} (${WAR[j.war]})`);
+  add("Fault code", el("button", { class: "link", text: `${F[j.f][0]} · ${F[j.f][2]}`, onclick: () => openFault(j.f) }));
+  add("Parts needed", j.need.length ? el("span", { class: "chips" }, ...j.need.map(p => el("span", { class: "chip", style: j.miss.includes(p) ? "border-color:var(--crit);color:var(--crit)" : "", text: P[p][1] + (j.miss.includes(p) ? " — not on van" : "") }))) : "None (adjustment only)");
+  add("Outcome", j.ftf ? "Fixed on first visit" : `Second visit needed: ${RS[j.rs]}`);
+  add("Days to resolve", j.ftf ? "0 (same visit)" : `${j.days} day${j.days === 1 ? "" : "s"} to second visit`);
+  // what the kit rule would have said
+  const fr = filtered(x => x.f === j.f); const ps = partStats(fr); const kit = [...ps.values()].filter(p => p.need / fr.length >= TH.kit).map(p => p.p);
+  add("Suggested kit for this fault", kit.length ? kit.map(p => P[p][1]).join(", ") : "none");
+  add("Kit would have covered it?", j.need.every(p => kit.includes(p)) ? "Yes" : "No — needed " + j.need.filter(p => !kit.includes(p)).map(p => P[p][1]).join(", "));
+  openDrawer(el("div", {}, el("h2", { text: "Job " + j.id }), el("p", { style: "color:var(--ink2);margin:2px 0 14px", text: "Job card" }), el("div", { class: "card" }, dl)));
+}
+
+// ---------- wiring ----------
+function fillSelect(sel, items, allLabel) { sel.replaceChildren(...(allLabel ? [el("option", { value: -1, text: allLabel })] : []), ...items.map((t, i) => el("option", { value: i, text: t }))); }
+fillSelect($("fFrom"), M.map((_, i) => monthLabel(i))); fillSelect($("fTo"), M.map((_, i) => monthLabel(i)));
+$("fFrom").value = S.from; $("fTo").value = S.to;
+fillSelect($("fRegion"), R, "All regions"); fillSelect($("fBrand"), B, "All brands"); fillSelect($("fCat"), C, "All categories"); fillSelect($("fWar"), WAR, "All");
+$("fFrom").onchange = e => { S.from = +e.target.value; if (S.from > S.to) { S.to = S.from; $("fTo").value = S.to; } update(); };
+$("fTo").onchange = e => { S.to = +e.target.value; if (S.to < S.from) { S.from = S.to; $("fFrom").value = S.from; } update(); };
+$("fRegion").onchange = e => { S.r = +e.target.value; update(); };
+$("fBrand").onchange = e => { S.b = +e.target.value; update(); };
+$("fCat").onchange = e => { S.c = +e.target.value; update(); };
+$("fWar").onchange = e => { S.w = +e.target.value; update(); };
+$("reset").onclick = () => { Object.assign(S, { from: 0, to: M.length - 1, r: -1, b: -1, c: -1, w: -1 }); ["fRegion", "fBrand", "fCat", "fWar"].forEach(id => $(id).value = -1); $("fFrom").value = 0; $("fTo").value = M.length - 1; update(); };
+$("faultSel").onchange = e => { S.fault = +e.target.value; renderParts(filtered()); };
+$("openFault").onclick = () => S.fault != null && openFault(S.fault);
+document.querySelectorAll(".tab").forEach(b => b.addEventListener("click", () => setTab(b.dataset.tab)));
+function setTab(t) { S.tab = t; document.querySelectorAll(".tab").forEach(b => b.setAttribute("aria-selected", b.dataset.tab === t)); document.querySelectorAll(".page").forEach(p => p.classList.toggle("active", p.id === "page-" + t)); render(); scrollTo({ top: 0 }); }
+function render() {
+  const rows = filtered();
+  $("filterCount").textContent = fmt(rows.length) + " jobs match";
+  if (S.tab === "overview") renderOverview(rows); else if (S.tab === "parts") renderParts(rows); else if (S.tab === "people") renderPeople(rows); else renderJobs(rows);
+}
+function update() { ["tbl-freq", "tbl-techs", "tbl-jobs"].forEach(id => { const h = $(id); if (h._st) h._st.page = 0; }); render(); }
+let rt; addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(render, 150); });
+render();
+window.__UC19 = { JOBS, agg, filtered, faultTable, S };
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,30 @@
+fault_code,category,fault_description
+WM-E01,Washing machine,Not draining
+WM-E02,Washing machine,Drum not spinning
+WM-E03,Washing machine,Leaking water
+WM-E04,Washing machine,Not heating
+WM-E05,Washing machine,Door will not lock/open
+WM-E06,Washing machine,No power / electronic fault
+WM-E07,Washing machine,Noise / vibration
+DW-E01,Dishwasher,Not draining
+DW-E02,Dishwasher,Poor wash result
+DW-E03,Dishwasher,Water leak / aquastop
+DW-E04,Dishwasher,Not heating
+DW-E05,Dishwasher,Control fault
+RF-E01,Refrigerator,Not cooling
+RF-E02,Refrigerator,Frost build-up (No Frost)
+RF-E03,Refrigerator,Water inside cabinet
+RF-E04,Refrigerator,Noisy fan
+RF-E05,Refrigerator,Door seal / light
+RF-E06,Refrigerator,Ice maker not working
+OV-E01,Oven,Not heating
+OV-E02,Oven,Fan not working
+OV-E03,Oven,Temperature wrong
+OV-E04,Oven,Door glass / hinge
+DR-E01,Dryer,Not drying
+DR-E02,Dryer,Drum not turning
+DR-E03,Dryer,Water tank error
+AC-E01,Air conditioner,Not cooling
+AC-E02,Air conditioner,Water dripping indoors
+AC-E03,Air conditioner,Communication error
+AC-E04,Air conditioner,No response to remote

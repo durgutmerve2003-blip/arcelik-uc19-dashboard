@@ -1,0 +1,66 @@
+technician_id,region,city,tenure_years
+T-001,Marmara,İstanbul,6
+T-002,Marmara,Bursa,5
+T-003,Marmara,Kocaeli,5
+T-004,Marmara,İstanbul,9
+T-005,Marmara,Bursa,12
+T-006,Marmara,Kocaeli,7
+T-007,Marmara,İstanbul,12
+T-008,Marmara,Bursa,7
+T-009,Marmara,Kocaeli,9
+T-010,Marmara,İstanbul,12
+T-011,Marmara,Bursa,1
+T-012,Marmara,Kocaeli,15
+T-013,Marmara,İstanbul,8
+T-014,Marmara,Bursa,3
+T-015,Marmara,Kocaeli,4
+T-016,Marmara,İstanbul,13
+T-017,Marmara,Bursa,12
+T-018,Marmara,Kocaeli,8
+T-019,Marmara,İstanbul,2
+T-020,İç Anadolu,Ankara,2
+T-021,İç Anadolu,Konya,1
+T-022,İç Anadolu,Kayseri,7
+T-023,İç Anadolu,Ankara,1
+T-024,İç Anadolu,Konya,10
+T-025,İç Anadolu,Kayseri,2
+T-026,İç Anadolu,Ankara,15
+T-027,İç Anadolu,Konya,3
+T-028,İç Anadolu,Kayseri,11
+T-029,İç Anadolu,Ankara,14
+T-030,İç Anadolu,Konya,15
+T-031,İç Anadolu,Kayseri,11
+T-032,Ege,İzmir,14
+T-033,Ege,Manisa,4
+T-034,Ege,Aydın,7
+T-035,Ege,İzmir,14
+T-036,Ege,Manisa,1
+T-037,Ege,Aydın,3
+T-038,Ege,İzmir,14
+T-039,Ege,Manisa,3
+T-040,Ege,Aydın,14
+T-041,Ege,İzmir,14
+T-042,Akdeniz,Antalya,11
+T-043,Akdeniz,Adana,11
+T-044,Akdeniz,Mersin,2
+T-045,Akdeniz,Antalya,5
+T-046,Akdeniz,Adana,15
+T-047,Akdeniz,Mersin,7
+T-048,Akdeniz,Antalya,4
+T-049,Akdeniz,Adana,14
+T-050,Akdeniz,Mersin,13
+T-051,Karadeniz,Samsun,11
+T-052,Karadeniz,Trabzon,2
+T-053,Karadeniz,Samsun,7
+T-054,Karadeniz,Trabzon,14
+T-055,Karadeniz,Samsun,12
+T-056,Karadeniz,Trabzon,7
+T-057,Güneydoğu Anadolu,Gaziantep,8
+T-058,Güneydoğu Anadolu,Diyarbakır,1
+T-059,Güneydoğu Anadolu,Gaziantep,13
+T-060,Güneydoğu Anadolu,Diyarbakır,2
+T-061,Güneydoğu Anadolu,Gaziantep,15
+T-062,Doğu Anadolu,Erzurum,3
+T-063,Doğu Anadolu,Van,2
+T-064,Doğu Anadolu,Erzurum,14
+T-065,Doğu Anadolu,Van,4

@@ -1,0 +1,69 @@
+part_code,part_name,assumed_van_stock_rate
+P-WM-DP,Drain pump (WM),0.92
+P-WM-FLT,Pump filter (WM),0.95
+P-WM-DH,Drain hose (WM),0.88
+P-WM-CB,Carbon brushes,0.93
+P-WM-MOT,Drive motor (WM),0.4
+P-WM-BLT,Drive belt (WM),0.9
+P-WM-MCB,Motor control board (WM),0.45
+P-WM-DG,Door gasket (WM),0.8
+P-WM-IH,Inlet hose,0.94
+P-WM-TSK,Tub seal kit,0.5
+P-WM-DD,Detergent drawer,0.7
+P-WM-HE,Heating element (WM),0.88
+P-NTC,NTC temperature sensor,0.95
+P-WM-DL,Door lock (WM),0.93
+P-WM-DHN,Door handle (WM),0.75
+P-WM-MB,Main control board (WM),0.38
+P-WM-DB,Display board (WM),0.45
+P-PWR,Power cable / EMI filter,0.85
+P-WM-BRG,Drum bearing kit,0.35
+P-WM-SA,Shock absorber pair,0.82
+P-WM-CW,Counterweight bolt set,0.9
+P-DW-DP,Drain pump (DW),0.9
+P-DW-FS,Filter set (DW),0.93
+P-DW-WP,Wash pump (DW),0.62
+P-DW-SA,Spray arm,0.85
+P-DW-DV,Diverter valve,0.55
+P-DW-AQ,Aquastop hose,0.78
+P-DW-DS,Door seal (DW),0.8
+P-FLS,Float switch,0.88
+P-DW-HP,Heater pump (DW),0.58
+P-DW-MB,Main control board (DW),0.4
+P-DW-DB,Display board (DW),0.48
+P-RF-CMP,Compressor (RF),0.25
+P-RF-SR,Start relay (RF),0.92
+P-GAS,Refrigerant recharge kit,0.85
+P-RF-TH,Thermostat (RF),0.88
+P-RF-DH,Defrost heater,0.72
+P-RF-DS,Defrost sensor,0.9
+P-RF-EF,Evaporator fan,0.7
+P-RF-DT,Drain tube heater,0.8
+P-RF-WF,Water filter (RF),0.75
+P-RF-CF,Condenser fan,0.68
+P-RF-DG,Door gasket (RF),0.62
+P-RF-LED,LED lamp (RF),0.95
+P-RF-IM,Ice maker unit,0.3
+P-RF-WV,Water inlet valve (RF),0.78
+P-OV-BE,Bottom element (OV),0.8
+P-OV-TE,Top / grill element (OV),0.78
+P-OV-FE,Fan element (OV),0.75
+P-OV-FM,Fan motor (OV),0.7
+P-OV-TH,Oven thermostat,0.85
+P-OV-TS,Oven temperature sensor,0.88
+P-OV-HG,Door hinge (OV),0.82
+P-OV-GL,Inner door glass (OV),0.22
+P-DR-CU,Condenser unit (DR),0.4
+P-DR-HE,Heating element (DR),0.8
+P-DR-FM,Fan motor (DR),0.62
+P-DR-BLT,Drive belt (DR),0.92
+P-DR-TN,Belt tensioner (DR),0.82
+P-DR-DP,Drain pump (DR),0.78
+P-AC-CAP,Capacitor (AC),0.95
+P-AC-OPCB,Outdoor PCB (AC),0.35
+P-AC-IPCB,Indoor PCB (AC),0.42
+P-AC-CH,Condensate hose,0.95
+P-AC-DPAN,Drain pan (AC),0.5
+P-AC-CBL,Interconnect cable (AC),0.88
+P-AC-RC,Remote control (AC),0.82
+P-AC-RB,Receiver board (AC),0.55
